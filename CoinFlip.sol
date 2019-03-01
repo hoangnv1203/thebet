@@ -146,6 +146,7 @@ contract TheBetCoinFlip {
     uint256 public roundTime = 0;
     uint256 public startTime = 0;
     uint256 public slideEndTime = 0;
+    uint256 public keyBlockNr;
     address public dealer;
 
     GameState public state = GameState.Pending;
@@ -218,6 +219,7 @@ contract TheBetCoinFlip {
             state = GameState.Starting;
             startTime = block.timestamp;
             slideEndTime = startTime.add(ROUND_TIME);
+            keyBlockNr = genEstKeyBlockNr(slideEndTime);
 
             emit StartGame(round, startTime, slideEndTime);
         }
@@ -227,7 +229,7 @@ contract TheBetCoinFlip {
         uint256 finalizeTime = FINALIZE_WAIT_DURATION.add(slideEndTime);
 
         if (finalizeTime > block.timestamp) return false; // too soon to finalize
-        if (genEstKeyBlockNr(slideEndTime) >= block.number) return false; //block hash not exist
+        if (keyBlockNr >= block.number) return false; //block hash not exist
         if (state != GameState.Starting) return false;
         return true;
     }
@@ -249,10 +251,10 @@ contract TheBetCoinFlip {
     function finalizeGame() public payable {
         require(finalizeable(), "Not ready to draw results");
 
-        uint256 keyBlockNr = getKeyBlockNr(genEstKeyBlockNr(slideEndTime));
-        uint256 _seed = getSeed(keyBlockNr);
+        uint256 keyBlockNrFinal = getKeyBlockNr(keyBlockNr);
+        uint256 _seed = getSeed(keyBlockNrFinal);
 
-        uint256 luckyNumber = getRandom(_seed);
+        uint256 luckyNumber = getLuckyNumber(_seed);
         uint256 amountWin;
         uint256 amountReturn;
 
@@ -299,7 +301,7 @@ contract TheBetCoinFlip {
     }
 
     // Get random 1 | 0
-    function getRandom(uint256 _seed) public pure returns(uint256) {
+    function getLuckyNumber(uint256 _seed) public pure returns(uint256) {
         return (_seed % 2);
     }
 }
